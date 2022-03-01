@@ -4,7 +4,7 @@ ReadFile="rowread.txt"
 NSFile="nsnames.txt"             
 AWFile="awnames.txt"          
 PUFile="punames.txt"           
-setwd("C:\\users\\Yurpalak\\Desktop\\PU润色\\cell communication")
+
 #Read the rowread file and reorganize
 rt=read.table(ReadFile,sep="\t",header=T,check.names=F)
 rt=as.matrix(rt)
@@ -73,7 +73,7 @@ plot2 <- FeatureScatter(object = pbmc, feature1 = "nCount_RNA", feature2 = "nFea
 CombinePlots(plots = list(plot1, plot2))
 #Identification of highly variable features (feature selection)
 pbmc <- NormalizeData(object = pbmc, normalization.method = "LogNormalize", scale.factor = 10000)
-#提取细胞间变异系数交大的基因
+#extracte Genes with high intercellular coefficient of variation  
 pbmc <- FindVariableFeatures(object = pbmc, selection.method = "vst", nfeatures = 2000)
 #cell count
 table(Idents(pbmc))
@@ -142,7 +142,7 @@ write.table(sig.markers,file="03.clusterMarkers.txt",sep="\t",row.names=F,quote=
 
 top10 <- pbmc.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
 write.table(top10,file="03.top10markers.txt",sep="\t",row.names=F,quote=F)
-#FeaturePlot处错了
+#FeaturePlot
 top2 <- pbmc.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_log2FC)
 FeaturePlot(pbmc, features = top2$gene,split.by = pbmc$seurat_clusters)
 #save pbmc.markers
@@ -163,7 +163,9 @@ cluster10Marker=showGenes
 DotPlot(object = pbmc, features = cluster10Marker)
 #cluster markers RidgePlot
 RidgePlot(pbmc, features =showGenes )
+saveRDS(pbmc, file="pbmc.rds")
 
+###################################04.cluster Markers gene GO/KEGG analysis################################################
 #use compareCluster function in clusterProfiler
 load(file = 'pbmc.markers.Rdata')
 table(pbmc.markers$cluster)
@@ -198,9 +200,8 @@ p + theme(axis.text.x = element_text(
   angle = 45,
   vjust = 0.5, hjust = 0.5
 ))
-saveRDS(pbmc, file="pbmc.rds")
-###################################04.cluster Markers gene GO/KEGG analysis################################################
-#引用包
+
+# ANALYSE BY cluster seperately
 library("clusterProfiler")
 library("org.Hs.eg.db")
 library("enrichplot")
@@ -269,7 +270,7 @@ dotplot(kk, showCategory=showNum, orderBy="GeneRatio", color=colorSel)
 pbmc <- readRDS("pbmc.rds")
 
 levels(pbmc)
-#添加注释信息1
+#annotation
 new.cluster.ids <- c("Immune cells_1","Immune cells_2","Basal","Spinous","Mitotic","Melanocytes")
 names(new.cluster.ids) <- levels(pbmc)
 pbmc <- RenameIdents(pbmc, new.cluster.ids)
@@ -512,36 +513,22 @@ saveRDS(cellchat, file = "cellchat.PU.rds")
 
 
 ############################################################################################
-###添加实验组信息
-setwd("C:\\users\\Yurpalak\\Desktop\\137897\\PU")      #设计工作目录
+##Data input & processing and initialization of CellChat object
 PU<- readRDS(file = "Npbmc.rds")
-setwd("C:\\Users\\Yurpalak\\Desktop\\137897\\Z")  
-levels(PU)
-#添加注释信息
-new.cluster.ids <- c("Immune cells","Keratinocytes","Keratinocytes","Keratinocytes","Mitotic","Melanocytes")
+####reannotation of cell types(put the same cell type to a group ,if need)
+new.cluster.ids <- c("Immune cells","Immune cells","Keratinocytes","Keratinocytes","Mitotic","Melanocytes")
 names(new.cluster.ids) <- levels(PU)
 PU <- RenameIdents(PU, new.cluster.ids)
 table(Idents(PU))
 levels(PU)
-
-
-
-
-#创建cellchat对象
-
-cellchat.PU <- createCellChat(object = data.input1)
-cellchat.PU <- addMeta(cellchat.PU, meta = identity, meta.name = "labels")
-cellchat.PU <- setIdent(cellchat.PU, ident.use = "labels") # set "labels" as default cell identity
-levels(cellchat.PU@idents) # show factor levels of the cell labels
-
-cellchat.PU
-cellchat.PU@data.signaling
-cellchat=cellchat.PU
 ##########################Comparison analysis of multiple datasets using CellChat##########################################
-#
+#Load CellChat object of each dataset and then merge together
+cellchat.AW<- readRDS(file = "cellchat.AW.rds")
+cellchat.PU<- readRDS(file = "cellchat.PU.rds")
+#unified the order of the cells type in two groups(if need)
 group.new = levels(cellchat.AW@idents)
 cellchat.PU <- liftCellChat(cellchat.PU, group.new)
-#Load CellChat object of each dataset and then merge together
+#
 object.list <- list(AW = cellchat.AW, PU = cellchat.PU)
 cellchat <- mergeCellChat(object.list, add.names = names(object.list))
 cellchat
